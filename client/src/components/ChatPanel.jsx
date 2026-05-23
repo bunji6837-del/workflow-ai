@@ -12,6 +12,7 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
 
   useEffect(() => {
     let mounted = true;
+
     setMessages([]);
     setError("");
 
@@ -41,7 +42,11 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          setError("실시간 채팅 연결에 실패했습니다. 메시지는 저장되지만 새로고침 후 보일 수 있습니다.");
+        }
+      });
 
     return () => {
       mounted = false;
@@ -56,13 +61,22 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!body.trim()) return;
+    const nextBody = body.trim();
+    if (!nextBody) return;
 
     setLoading(true);
     setError("");
 
     try {
-      await api.sendMessage(project.id, body);
+      const result = await api.sendMessage(project.id, nextBody);
+
+      if (result.message) {
+        setMessages((prev) => {
+          if (prev.some((message) => message.id === result.message.id)) return prev;
+          return [...prev, result.message];
+        });
+      }
+
       setBody("");
     } catch (sendError) {
       setError(sendError.message);

@@ -8,6 +8,24 @@ const { generateAiPlan } = require("../openaiAi");
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
+function decodeOriginalName(originalName) {
+  const raw = String(originalName || "uploaded.xlsx");
+
+  try {
+    const decoded = Buffer.from(raw, "latin1").toString("utf8");
+    const rawHasHangul = /[가-힣]/.test(raw);
+    const decodedHasHangul = /[가-힣]/.test(decoded);
+
+    if (!rawHasHangul && decodedHasHangul) {
+      return decoded;
+    }
+
+    return raw;
+  } catch {
+    return raw;
+  }
+}
+
 async function findOrCreateProject({ workspaceId, userId, name, description = "" }) {
   const safeName = String(name || "자동 생성 프로젝트").trim();
 
@@ -68,17 +86,20 @@ router.post("/import/excel", authRequired, upload.single("file"), async (req, re
     }
 
     const workspaceId = await ensureWorkspace(req.user);
-    const normalizedRows = await parseWorkbookBuffer(req.file.buffer, req.file.originalname);
+    const safeOriginalName = decodeOriginalName(req.file.originalname);
+    const normalizedRows = await parseWorkbookBuffer(req.file.buffer, safeOriginalName);
 
     if (normalizedRows.length === 0) {
       return res.status(400).json({ message: "엑셀에서 읽을 수 있는 업무 데이터가 없습니다." });
     }
 
     const byProject = new Map();
+
     for (const row of normalizedRows) {
       if (!byProject.has(row.projectName)) {
         byProject.set(row.projectName, []);
       }
+
       byProject.get(row.projectName).push(row);
     }
 
@@ -90,7 +111,7 @@ router.post("/import/excel", authRequired, upload.single("file"), async (req, re
         workspaceId,
         userId: req.user.id,
         name: projectName,
-        description: `${req.file.originalname} 파일에서 자동 생성됨`,
+        description: `${safeOriginalName} 파일에서 자동 생성됨`,
       });
 
       createdProjectIds.push(project.id);
@@ -107,7 +128,7 @@ router.post("/import/excel", authRequired, upload.single("file"), async (req, re
 
     res.json({
       message: "엑셀 업로드가 완료되었습니다.",
-      fileName: req.file.originalname,
+      fileName: safeOriginalName,
       projectCount: byProject.size,
       taskCount,
       projectIds: createdProjectIds,
