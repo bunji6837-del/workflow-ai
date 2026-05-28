@@ -4,13 +4,17 @@ import { supabase } from "./lib/supabaseClient";
 import LoginPage from "./components/LoginPage";
 import AppShell from "./layout/AppShell";
 import DashboardPage from "./pages/DashboardPage";
+import ProjectPage from "./pages/ProjectPage";
 import ProjectChatPage from "./pages/ProjectChatPage";
 import TeamPage from "./pages/TeamPage";
+import ProfilePage from "./pages/ProfilePage";
 
 function LoadingScreen() {
   return (
     <div className="grid min-h-screen place-items-center bg-slate-950 text-white">
-      <div className="rounded-3xl bg-white/10 px-6 py-4 text-sm font-black">WorkFlow AI 불러오는 중...</div>
+      <div className="rounded-3xl bg-white/10 px-6 py-4 text-sm font-black">
+        WorkFlow AI 불러오는 중...
+      </div>
     </div>
   );
 }
@@ -50,8 +54,10 @@ export default function App() {
 
         <Route element={session ? <AppShell session={session} /> : <Navigate to="/login" replace />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/projects" element={<ProjectPage />} />
           <Route path="/chat" element={<ProjectChatPage />} />
           <Route path="/team" element={<TeamPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
 

@@ -1,6 +1,13 @@
 const express = require("express");
 const { supabaseAdmin } = require("../supabaseAdmin");
 const { authRequired, ensureWorkspace } = require("../auth");
+const {
+  ensureProfile,
+  getProfilesByUserIds,
+  publicNameFromProfile,
+  updateProfileByUserId,
+  fallbackNameFromEmail,
+} = require("../profileHelpers");
 
 const router = express.Router();
 
@@ -14,6 +21,7 @@ async function listAuthUsersMap() {
     if (error) throw error;
 
     const users = data?.users || [];
+
     for (const user of users) {
       userMap.set(user.id, user);
     }
@@ -30,6 +38,7 @@ async function findAuthUserByEmail(email) {
   if (!target) return null;
 
   const userMap = await listAuthUsersMap();
+
   return Array.from(userMap.values()).find((user) => String(user.email || "").toLowerCase() === target) || null;
 }
 
@@ -48,6 +57,7 @@ async function getCurrentMembership(workspaceId, userId) {
 router.get("/members", authRequired, async (req, res, next) => {
   try {
     const workspaceId = await ensureWorkspace(req.user);
+    await ensureProfile(req.user);
 
     const { data: members, error } = await supabaseAdmin
       .from("workspace_members")
@@ -58,11 +68,19 @@ router.get("/members", authRequired, async (req, res, next) => {
     if (error) throw error;
 
     const userMap = await listAuthUsersMap();
+    const profileMap = await getProfilesByUserIds((members || []).map((member) => member.user_id));
+
     const enriched = (members || []).map((member) => {
       const user = userMap.get(member.user_id);
+      const profile = profileMap.get(member.user_id);
+      const email = user?.email || profile?.email || null;
+
       return {
         ...member,
-        email: user?.email || null,
+        email,
+        display_name: publicNameFromProfile(profile, email),
+        nickname: profile?.nickname || "",
+        avatar_url: profile?.avatar_url || "",
         last_sign_in_at: user?.last_sign_in_at || null,
       };
     });
@@ -84,6 +102,7 @@ router.post("/members", authRequired, async (req, res, next) => {
 
     const email = String(req.body.email || "").trim().toLowerCase();
     const role = ["admin", "member"].includes(req.body.role) ? req.body.role : "member";
+    const displayName = String(req.body.display_name || "").trim();
 
     if (!email) {
       return res.status(400).json({ message: "추가할 팀원의 이메일이 필요합니다." });
@@ -112,11 +131,19 @@ router.post("/members", authRequired, async (req, res, next) => {
 
     if (error) throw error;
 
+    const existingProfile = await ensureProfile(targetUser);
+
+    const profile = displayName
+      ? await updateProfileByUserId(targetUser.id, { display_name: displayName })
+      : existingProfile;
+
     res.json({
-      message: `${targetUser.email} 팀원이 ${role} 권한으로 추가됐습니다.`,
+      message: `${publicNameFromProfile(profile, targetUser.email)} 팀원이 ${role} 권한으로 추가됐습니다.`,
       member: {
         ...data,
         email: targetUser.email,
+        display_name: publicNameFromProfile(profile, targetUser.email),
+        nickname: profile?.nickname || "",
       },
     });
   } catch (error) {

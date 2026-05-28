@@ -7,6 +7,14 @@ import ProjectSidebar from "../components/ProjectSidebar";
 import PwaInstallButton from "../components/PwaInstallButton";
 
 function titleByPath(pathname) {
+  if (pathname.startsWith("/projects")) {
+    return {
+      eyebrow: "Project Workspace",
+      title: "프로젝트 관리",
+      description: "프로젝트별 업무, 마감일, 진행률, 채팅을 따로 확인합니다.",
+    };
+  }
+
   if (pathname.startsWith("/chat")) {
     return {
       eyebrow: "Project Messenger",
@@ -23,10 +31,18 @@ function titleByPath(pathname) {
     };
   }
 
+  if (pathname.startsWith("/profile")) {
+    return {
+      eyebrow: "My Profile",
+      title: "내 프로필 설정",
+      description: "팀원 목록과 채팅에 표시될 이름과 닉네임을 설정합니다.",
+    };
+  }
+
   return {
     eyebrow: "AI Collaboration Workspace",
     title: "엑셀 기반 프로젝트 자동 생성 협업툴",
-    description: "엑셀 업로드, AI 생성, 업무 진행률, 프로젝트 채팅을 한 화면에서 관리합니다.",
+    description: "전체 업무 현황, 일정표, 프로젝트 생성 기능을 한 화면에서 관리합니다.",
   };
 }
 
@@ -35,6 +51,7 @@ export default function AppShell({ session }) {
   const pageTitle = titleByPath(location.pathname);
 
   const [workspace, setWorkspace] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState("all");
   const [query, setQuery] = useState("");
@@ -45,6 +62,12 @@ export default function AppShell({ session }) {
   const selectedProject = useMemo(() => {
     return projects.find((project) => project.id === selectedProjectId) || null;
   }, [projects, selectedProjectId]);
+
+  const loadProfile = useCallback(async () => {
+    const payload = await api.getProfile();
+    setProfile(payload.profile);
+    return payload.profile;
+  }, []);
 
   const loadWorkspaceAndProjects = useCallback(async () => {
     const [workspacePayload, projectPayload] = await Promise.all([api.getWorkspace(), api.getProjects()]);
@@ -58,8 +81,8 @@ export default function AppShell({ session }) {
   }, [selectedProjectId]);
 
   useEffect(() => {
-    loadWorkspaceAndProjects().catch((error) => setShellError(error.message));
-  }, [loadWorkspaceAndProjects]);
+    Promise.all([loadProfile(), loadWorkspaceAndProjects()]).catch((error) => setShellError(error.message));
+  }, [loadProfile, loadWorkspaceAndProjects]);
 
   useEffect(() => {
     const channel = supabase
@@ -87,6 +110,9 @@ export default function AppShell({ session }) {
   const contextValue = {
     session,
     workspace,
+    profile,
+    setProfile,
+    loadProfile,
     projects,
     selectedProjectId,
     selectedProject,
@@ -102,6 +128,7 @@ export default function AppShell({ session }) {
     <div className="flex min-h-screen bg-[#f4f7fb]">
       <ProjectSidebar
         workspace={workspace}
+        profile={profile}
         projects={projects}
         selectedProjectId={selectedProjectId}
         onSelectProject={setSelectedProjectId}

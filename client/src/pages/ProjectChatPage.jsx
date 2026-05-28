@@ -3,7 +3,7 @@ import { MessageSquareText } from "lucide-react";
 import ChatPanel from "../components/ChatPanel";
 
 export default function ProjectChatPage() {
-  const { session, projects, selectedProjectId, selectedProject, setSelectedProjectId } = useOutletContext();
+  const { session, profile, projects, selectedProjectId, selectedProject, setSelectedProjectId } = useOutletContext();
 
   const activeProject = selectedProjectId === "all" ? null : selectedProject;
 
@@ -48,7 +48,7 @@ export default function ProjectChatPage() {
 
       <section>
         {activeProject ? (
-          <ChatPanel project={activeProject} currentUser={session.user} fullHeight />
+          <ChatPanel project={activeProject} currentUser={session.user} profile={profile} fullHeight />
         ) : (
           <div className="grid min-h-[560px] place-items-center rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-sm">
             <div>

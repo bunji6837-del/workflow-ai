@@ -6,6 +6,7 @@ const projectRoutes = require("./routes/projectRoutes");
 const importRoutes = require("./routes/importRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const memberRoutes = require("./routes/memberRoutes");
+const profileRoutes = require("./routes/profileRoutes");
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -27,6 +28,7 @@ app.use("/api", projectRoutes);
 app.use("/api", importRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", memberRoutes);
+app.use("/api", profileRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: "API 경로를 찾을 수 없습니다." });

@@ -3,7 +3,17 @@ import { MessageSquareText, Paperclip, Send } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { api } from "../api";
 
-export default function ChatPanel({ project, currentUser, fullHeight = false }) {
+function getSenderName(message, currentUser) {
+  return (
+    message.user_display_name ||
+    message.display_name ||
+    message.user_email ||
+    currentUser?.email ||
+    "user"
+  );
+}
+
+export default function ChatPanel({ project, currentUser, profile, fullHeight = false }) {
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,7 +48,13 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
         (payload) => {
           setMessages((prev) => {
             if (prev.some((message) => message.id === payload.new.id)) return prev;
-            return [...prev, payload.new];
+
+            const withoutTemp = prev.filter((message) => {
+              if (!String(message.id).startsWith("temp-")) return true;
+              return !(message.body === payload.new.body && message.user_id === payload.new.user_id);
+            });
+
+            return [...withoutTemp, payload.new];
           });
         }
       )
@@ -64,6 +80,22 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
     const nextBody = body.trim();
     if (!nextBody) return;
 
+    const tempId = `temp-${Date.now()}`;
+    const myDisplayName = profile?.display_name || profile?.nickname || currentUser?.email || "나";
+
+    const optimisticMessage = {
+      id: tempId,
+      project_id: project.id,
+      user_id: currentUser.id,
+      user_email: currentUser.email,
+      user_display_name: myDisplayName,
+      body: nextBody,
+      created_at: new Date().toISOString(),
+      pending: true,
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+    setBody("");
     setLoading(true);
     setError("");
 
@@ -72,13 +104,21 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
 
       if (result.message) {
         setMessages((prev) => {
-          if (prev.some((message) => message.id === result.message.id)) return prev;
-          return [...prev, result.message];
+          const exists = prev.some((message) => message.id === result.message.id);
+
+          if (exists) {
+            return prev.filter((message) => message.id !== tempId);
+          }
+
+          return prev.map((message) => {
+            if (message.id === tempId) return result.message;
+            return message;
+          });
         });
       }
-
-      setBody("");
     } catch (sendError) {
+      setMessages((prev) => prev.filter((message) => message.id !== tempId));
+      setBody(nextBody);
       setError(sendError.message);
     } finally {
       setLoading(false);
@@ -116,7 +156,8 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
               <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] rounded-3xl px-4 py-3 ${mine ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}>
                   <p className={`mb-1 text-xs font-black ${mine ? "text-blue-100" : "text-slate-400"}`}>
-                    {message.user_email || "user"}
+                    {getSenderName(message, currentUser)}
+                    {message.pending ? " · 전송 중" : ""}
                   </p>
                   <p className="whitespace-pre-wrap text-sm font-semibold leading-6">{message.body}</p>
                 </div>
@@ -138,7 +179,8 @@ export default function ChatPanel({ project, currentUser, fullHeight = false }) 
           className="h-10 flex-1 bg-transparent text-sm font-semibold outline-none"
         />
         <button
-          disabled={loading}
+          type="submit"
+          disabled={loading && !body.trim()}
           className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white disabled:opacity-60"
         >
           <Send size={17} />

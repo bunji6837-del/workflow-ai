@@ -88,10 +88,25 @@ export const api = {
     return request("/members");
   },
 
-  addMember(email, role = "member") {
+  addMember(email, role = "member", displayName = "") {
     return request("/members", {
       method: "POST",
-      body: JSON.stringify({ email, role }),
+      body: JSON.stringify({
+        email,
+        role,
+        display_name: displayName,
+      }),
+    });
+  },
+
+  getProfile() {
+    return request("/profile");
+  },
+
+  updateProfile(payload) {
+    return request("/profile", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
     });
   },
 };

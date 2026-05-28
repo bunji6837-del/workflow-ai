@@ -9,9 +9,14 @@ function roleBadge(role) {
   return "bg-slate-100 text-slate-600";
 }
 
+function memberName(member) {
+  return member.display_name || member.nickname || member.email?.split("@")[0] || "이름 없음";
+}
+
 export default function TeamPage() {
   const { workspace, notice, showNotice } = useOutletContext();
   const [members, setMembers] = useState([]);
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [loading, setLoading] = useState(false);
@@ -47,7 +52,8 @@ export default function TeamPage() {
     setSubmitting(true);
 
     try {
-      const result = await api.addMember(email.trim(), role);
+      const result = await api.addMember(email.trim(), role, displayName.trim());
+      setDisplayName("");
       setEmail("");
       showNotice(result.message || "팀원이 추가됐습니다.");
       await loadMembers();
@@ -86,7 +92,7 @@ export default function TeamPage() {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-black">팀원 목록</h2>
-              <p className="mt-1 text-sm font-bold text-slate-400">현재 워크스페이스에 들어온 멤버입니다.</p>
+              <p className="mt-1 text-sm font-bold text-slate-400">이름, 이메일, 권한을 확인합니다.</p>
             </div>
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-50 text-blue-700">
               <UsersRound size={20} />
@@ -94,9 +100,13 @@ export default function TeamPage() {
           </div>
 
           {loading ? (
-            <div className="rounded-3xl bg-slate-50 p-8 text-center text-sm font-bold text-slate-400">팀원 목록을 불러오는 중입니다...</div>
+            <div className="rounded-3xl bg-slate-50 p-8 text-center text-sm font-bold text-slate-400">
+              팀원 목록을 불러오는 중입니다...
+            </div>
           ) : members.length === 0 ? (
-            <div className="rounded-3xl bg-slate-50 p-8 text-center text-sm font-bold text-slate-400">아직 팀원이 없습니다.</div>
+            <div className="rounded-3xl bg-slate-50 p-8 text-center text-sm font-bold text-slate-400">
+              아직 팀원이 없습니다.
+            </div>
           ) : (
             <div className="space-y-3">
               {members.map((member) => (
@@ -106,8 +116,8 @@ export default function TeamPage() {
                       <Mail size={19} />
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-slate-900">{member.email || "이메일 확인 불가"}</p>
-                      <p className="mt-1 truncate text-xs font-bold text-slate-400">user_id: {member.user_id}</p>
+                      <p className="truncate text-sm font-black text-slate-900">{memberName(member)}</p>
+                      <p className="mt-1 truncate text-xs font-bold text-slate-400">{member.email || "이메일 확인 불가"}</p>
                     </div>
                   </div>
 
@@ -134,6 +144,16 @@ export default function TeamPage() {
           </div>
 
           <label className="block">
+            <span className="mb-2 block text-sm font-black text-slate-600">이름 / 닉네임</span>
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder="예: 정훈"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none focus:border-blue-300 focus:bg-white"
+            />
+          </label>
+
+          <label className="mt-4 block">
             <span className="mb-2 block text-sm font-black text-slate-600">이메일</span>
             <input
               type="email"
@@ -166,9 +186,9 @@ export default function TeamPage() {
         </form>
 
         <div className="rounded-[32px] border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-          <h3 className="text-lg font-black">팀원 추가 방식</h3>
+          <h3 className="text-lg font-black">팀원 표시 방식</h3>
           <p className="mt-3 text-sm font-semibold leading-6 text-slate-300">
-            지금 버전은 이메일 초대 메일 발송이 아니라, 이미 회원가입한 계정을 워크스페이스 멤버로 추가하는 방식입니다. 추가할 사용자가 먼저 회원가입해야 합니다.
+            팀원 목록에는 user_id 대신 이름과 이메일이 표시됩니다. 사용자는 내 프로필 메뉴에서 자신의 표시 이름과 닉네임을 직접 수정할 수 있습니다.
           </p>
         </div>
       </aside>
