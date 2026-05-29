@@ -57,6 +57,7 @@ export default function AppShell({ session }) {
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
   const [shellError, setShellError] = useState("");
+  const [projectDeleteLoading, setProjectDeleteLoading] = useState(false);
   const noticeTimerRef = useRef(null);
 
   const selectedProject = useMemo(() => {
@@ -103,6 +104,35 @@ export default function AppShell({ session }) {
     noticeTimerRef.current = window.setTimeout(() => setNotice(""), 3500);
   }, []);
 
+  const handleDeleteProject = useCallback(
+    async (project) => {
+      if (!project?.id) return false;
+
+      setProjectDeleteLoading(true);
+
+      try {
+        await api.deleteProject(project.id);
+
+        setProjects((prev) => prev.filter((item) => item.id !== project.id));
+
+        if (selectedProjectId === project.id) {
+          setSelectedProjectId("all");
+        }
+
+        showNotice(`"${project.name}" 프로젝트를 삭제했습니다.`);
+        await loadWorkspaceAndProjects();
+
+        return true;
+      } catch (error) {
+        showNotice(error.message || "프로젝트 삭제 중 오류가 발생했습니다.");
+        return false;
+      } finally {
+        setProjectDeleteLoading(false);
+      }
+    },
+    [loadWorkspaceAndProjects, selectedProjectId, showNotice]
+  );
+
   async function handleLogout() {
     await supabase.auth.signOut();
   }
@@ -122,6 +152,7 @@ export default function AppShell({ session }) {
     notice,
     showNotice,
     loadWorkspaceAndProjects,
+    deleteProject: handleDeleteProject,
   };
 
   return (
@@ -132,6 +163,8 @@ export default function AppShell({ session }) {
         projects={projects}
         selectedProjectId={selectedProjectId}
         onSelectProject={setSelectedProjectId}
+        onDeleteProject={handleDeleteProject}
+        projectDeleteLoading={projectDeleteLoading}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">

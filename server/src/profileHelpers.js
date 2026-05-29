@@ -10,8 +10,8 @@ function cleanText(value, max = 60) {
 
 function publicNameFromProfile(profile, fallbackEmail) {
   return (
-    cleanText(profile?.display_name) ||
     cleanText(profile?.nickname) ||
+    cleanText(profile?.display_name) ||
     fallbackNameFromEmail(profile?.email || fallbackEmail)
   );
 }
@@ -75,6 +75,7 @@ async function getProfilesByUserIds(userIds) {
   if (error) throw error;
 
   const map = new Map();
+
   for (const profile of data || []) {
     map.set(profile.user_id, profile);
   }

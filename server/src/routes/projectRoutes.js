@@ -40,6 +40,43 @@ router.get("/projects", authRequired, async (req, res, next) => {
   }
 });
 
+router.delete("/projects/:id", authRequired, async (req, res, next) => {
+  try {
+    const workspaceId = await ensureWorkspace(req.user);
+    const { id } = req.params;
+
+    const { data: project, error: findError } = await supabaseAdmin
+      .from("projects")
+      .select("id, name, workspace_id")
+      .eq("workspace_id", workspaceId)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
+    if (!project) {
+      return res.status(404).json({
+        message: "삭제할 프로젝트를 찾을 수 없습니다.",
+      });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("projects")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("id", id);
+
+    if (error) throw error;
+
+    res.json({
+      message: "프로젝트가 삭제되었습니다.",
+      project,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/tasks", authRequired, async (req, res, next) => {
   try {
     const workspaceId = await ensureWorkspace(req.user);

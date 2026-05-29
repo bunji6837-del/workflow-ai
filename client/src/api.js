@@ -45,6 +45,12 @@ export const api = {
     return request("/projects");
   },
 
+  deleteProject(projectId) {
+    return request(`/projects/${encodeURIComponent(projectId)}`, {
+      method: "DELETE",
+    });
+  },
+
   getTasks(projectId = "all") {
     return request(`/tasks?project_id=${encodeURIComponent(projectId)}`);
   },
